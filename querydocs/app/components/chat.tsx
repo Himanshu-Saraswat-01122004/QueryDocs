@@ -21,7 +21,11 @@ const ChatComponent: React.FC = () => {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [documents, setDocuments] = React.useState<Document[]>([]);
   const [showSources, setShowSources] = React.useState<boolean>(false);
+  const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
+  const [copiedMessageIndex, setCopiedMessageIndex] = React.useState<number | null>(null);
+  const [isAtBottom, setIsAtBottom] = React.useState<boolean>(true);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const chatContainerRef = React.useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,10 +62,29 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  // Scroll to bottom when messages change
+  // Check if user is at bottom of chat
+  const checkIfAtBottom = React.useCallback(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    
+    const isAtBottomNow = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+    setIsAtBottom(isAtBottomNow);
+  }, []);
+
+  // Add scroll event listener to chat container
+  React.useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    
+    container.addEventListener('scroll', checkIfAtBottom);
+    return () => container.removeEventListener('scroll', checkIfAtBottom);
+  }, [checkIfAtBottom]);
+  
+  // Scroll to bottom when messages change and update bottom status
   React.useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setIsAtBottom(true);
     }
   }, [messages]);
 
@@ -91,42 +114,64 @@ const ChatComponent: React.FC = () => {
   };
 
   // Function to copy text to clipboard
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    
+    // Reset the copied state after 2 seconds
+    setTimeout(() => {
+      setCopiedIndex(null);
+    }, 2000);
+  };
+  
+  // Function to copy message text to clipboard
+  const copyMessageToClipboard = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMessageIndex(index);
+    
+    // Reset the copied state after 2 seconds
+    setTimeout(() => {
+      setCopiedMessageIndex(null);
+    }, 2000);
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* Chat messages display */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5 bg-slate-800 rounded-t-lg">
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-6 bg-gradient-to-b from-slate-900 to-slate-800 rounded-t-lg" 
+        onScroll={checkIfAtBottom}
+        style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, rgb(21, 30, 48) 0%, rgb(12, 17, 29) 90.1%)' }}
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <Bot size={48} className="text-indigo-400 mb-4" />
             <h3 className="text-xl font-medium mb-2 text-indigo-200">Welcome to QueryDocs</h3>
             <p className="text-center max-w-md mb-6">Ask questions about your uploaded documents and get AI-powered answers.</p>
             
-            <div className="bg-slate-700/50 p-4 rounded-lg max-w-md w-full mx-auto">
-              <h4 className="font-medium mb-2 text-indigo-300 flex items-center">
+            <div className="backdrop-blur-sm bg-slate-800/40 p-5 rounded-xl max-w-md w-full mx-auto border border-slate-700/50 shadow-lg">
+              <h4 className="font-medium mb-3 text-indigo-300 flex items-center">
                 <FileText size={16} className="mr-2" /> Example questions:
               </h4>
-              <ul className="space-y-2 text-sm">
+              <ul className="space-y-3 text-sm">
                 <li 
                   onClick={() => setQuery("What are the main skills mentioned in this resume?")} 
-                  className="p-2 bg-slate-700/80 rounded hover:bg-indigo-500/20 cursor-pointer transition-colors"
+                  className="p-3 bg-gradient-to-r from-slate-800/80 to-slate-800/40 rounded-lg hover:from-indigo-900/40 hover:to-slate-800/60 cursor-pointer transition-all duration-300 border border-slate-700/30 hover:border-indigo-500/30 hover:shadow-md group"
                 >
-                  "What are the main skills mentioned in this resume?"
+                  <span className="group-hover:text-indigo-300 transition-colors duration-300">"What are the main skills mentioned in this resume?"</span>
                 </li>
                 <li 
                   onClick={() => setQuery("Summarize the key points from this document")} 
-                  className="p-2 bg-slate-700/80 rounded hover:bg-indigo-500/20 cursor-pointer transition-colors"
+                  className="p-3 bg-gradient-to-r from-slate-800/80 to-slate-800/40 rounded-lg hover:from-indigo-900/40 hover:to-slate-800/60 cursor-pointer transition-all duration-300 border border-slate-700/30 hover:border-indigo-500/30 hover:shadow-md group"
                 >
-                  "Summarize the key points from this document"
+                  <span className="group-hover:text-indigo-300 transition-colors duration-300">"Summarize the key points from this document"</span>
                 </li>
                 <li 
                   onClick={() => setQuery("What education background is mentioned?")} 
-                  className="p-2 bg-slate-700/80 rounded hover:bg-indigo-500/20 cursor-pointer transition-colors"
+                  className="p-3 bg-gradient-to-r from-slate-800/80 to-slate-800/40 rounded-lg hover:from-indigo-900/40 hover:to-slate-800/60 cursor-pointer transition-all duration-300 border border-slate-700/30 hover:border-indigo-500/30 hover:shadow-md group"
                 >
-                  "What education background is mentioned?"
+                  <span className="group-hover:text-indigo-300 transition-colors duration-300">"What education background is mentioned?"</span>
                 </li>
               </ul>
             </div>
@@ -135,9 +180,9 @@ const ChatComponent: React.FC = () => {
           messages.map((message, index) => (
             <div 
               key={index} 
-              className={`relative rounded-lg shadow-md ${message.role === 'user' 
-                ? 'bg-indigo-700 ml-8 border border-indigo-600' 
-                : 'bg-slate-700 mr-8 border border-slate-600'}`}
+              className={`relative rounded-2xl p-5 shadow-lg ${message.role === 'user' 
+                ? 'bg-gradient-to-br from-slate-700 to-slate-800 ml-auto max-w-[85%] border border-slate-600/40'
+                : 'bg-gradient-to-br from-indigo-900/70 to-slate-900 mr-auto max-w-[85%] border border-indigo-500/30'}`}
             >
               <div className="absolute top-3 left-0 -ml-8 shadow-md z-10">
                 {message.role === 'user' ? (
@@ -151,29 +196,35 @@ const ChatComponent: React.FC = () => {
                 )}
               </div>
               
-              <div className="p-4">
-                {message.role === 'assistant' ? (
-                  <div>
-                    <div className="prose prose-invert max-w-none pt-3">
-                      <ReactMarkdown 
-                        components={MarkdownComponents}
-                        remarkPlugins={[remarkGfm]}
-                      >
-                        {message.content.replace(/\n{3,}/g, '\n\n')}
-                      </ReactMarkdown>
-                    </div>
-                    <div className="flex justify-end mt-2">
-                      <button 
-                        onClick={() => copyToClipboard(message.content)}
-                        className="text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-300 transition-colors"
-                      >
-                        <Copy size={12} /> Copy
-                      </button>
-                    </div>
+              <div className="flex flex-col">
+                {message.role === 'assistant' && (
+                  <div className="flex items-center mb-2 pb-2 border-b border-indigo-600/20">
+                    <Bot size={18} className="text-indigo-400 mr-2" />
+                    <span className="text-xs font-medium text-indigo-300">QueryDocs AI</span>
                   </div>
-                ) : (
-                  <p className="text-white">{message.content}</p>
                 )}
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={MarkdownComponents}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+              <div className="flex justify-end mt-3 pt-1 border-t border-slate-700/50">
+                <button 
+                  onClick={() => copyMessageToClipboard(message.content, index)}
+                  className="text-xs flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800/50 text-slate-400 hover:text-indigo-300 hover:bg-slate-700/70 transition-all duration-200"
+                >
+                  {copiedMessageIndex === index ? (
+                    <>
+                      <Check size={12} className="text-green-400" /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} /> Copy
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           ))
@@ -188,10 +239,13 @@ const ChatComponent: React.FC = () => {
             </div>
           </div>
         )}
-        {messages.length > 2 && (
+        {messages.length > 2 && !isAtBottom && (
           <button 
-            onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
-            className="fixed bottom-24 right-8 bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+            onClick={() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              setIsAtBottom(true);
+            }}
+            className="fixed bottom-24 right-8 bg-indigo-600/90 text-white p-3 rounded-full shadow-lg hover:bg-indigo-500 transition-all duration-300 backdrop-blur-sm border border-indigo-400/30 animate-pulse hover:animate-none hover:scale-110"
           >
             <ArrowDown size={20} />
           </button>
@@ -200,14 +254,14 @@ const ChatComponent: React.FC = () => {
       </div>
 
       {/* Chat input */}
-      <form onSubmit={handleSubmit} className="p-4 bg-slate-900 rounded-b-lg border-t border-slate-700">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
+      <form onSubmit={handleSubmit} className="p-5 bg-slate-900/95 backdrop-blur-sm rounded-b-lg border-t border-slate-700/50 shadow-lg">
+        <div className="flex items-center gap-3">
+          <textarea 
+            className="w-full p-4 bg-slate-800/90 text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/70 border border-slate-700/50 placeholder-slate-500 transition-all duration-200 shadow-inner"
+            placeholder="Ask a question about your documents..."
+            rows={1}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask a question about your documents..."
-            className="flex-1 py-3 px-4 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-slate-700"
             disabled={loading}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -218,17 +272,17 @@ const ChatComponent: React.FC = () => {
           />
           <button 
             type="submit" 
-            className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
+            className="p-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/20 border border-indigo-500/30"
             disabled={loading || !query.trim()}
             title="Send message"
           >
-            <Send size={20} />
+            <Send size={20} className="drop-shadow-md" />
           </button>
         </div>
-        <div className="mt-2 text-xs text-slate-500 flex justify-between items-center">
-          <span>Press Enter to send</span>
+        <div className="mt-2 text-xs text-slate-500 flex justify-between items-center px-1">
+          <span className="opacity-70 hover:opacity-100 transition-opacity">Press Enter to send</span>
           {query.length > 0 && (
-            <span className="text-right">{query.length} characters</span>
+            <span className="text-right bg-slate-800/50 px-2 py-1 rounded-md text-indigo-300/80">{query.length} characters</span>
           )}
         </div>
       </form>
@@ -266,10 +320,18 @@ const ChatComponent: React.FC = () => {
                         Document {index + 1}
                       </span>
                       <button 
-                        onClick={() => copyToClipboard(doc.pageContent)}
+                        onClick={() => copyToClipboard(doc.pageContent, index)}
                         className="text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-300 transition-colors"
                       >
-                        <Copy size={12} /> Copy
+                        {copiedIndex === index ? (
+                          <>
+                            <Check size={12} className="text-green-400" /> Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} /> Copy
+                          </>
+                        )}
                       </button>
                     </div>
                     <div className="text-white text-sm bg-slate-800/50 p-3 rounded my-2 max-h-32 overflow-y-auto whitespace-pre-line">

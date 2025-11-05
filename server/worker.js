@@ -5,6 +5,9 @@ import { Document } from "@langchain/core/documents";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const client = new QdrantClient({ url: `http://localhost:6333` });
 
@@ -28,46 +31,36 @@ const worker = new Worker("pdf-queue", async (job) => {
         let allChunks = [];
         for (let i = 0; i < docs.length; i++) {
             console.log(`Processing document ${i + 1}/${docs.length}`);
-            const doc = docs[i];
-            // Split the document into chunks
-            const chunks = await textSplitter.splitDocuments([doc]);
+            const chunks = await textSplitter.splitDocuments([docs[i]]);
             allChunks = allChunks.concat(chunks);
-            // console.log(`Document ${i + 1} split into ${chunks.length} chunks`);
-            // Print each chunk (limit to first 50 chars for readability)
-            // chunks.forEach((chunk, idx) => {
-            //     console.log(`--- Chunk ${idx + 1} ---`);
-            //     console.log(`Metadata: ${JSON.stringify(chunk.metadata)}`);
-            //     console.log(`Content preview: ${chunk.pageContent.substring(0, 50)}...`);
-            //     console.log(`Chunk length: ${chunk.pageContent.length} characters`);
-            // });
         }
         
         console.log(`Total chunks created: ${allChunks.length}`);
-
-        // Embed and store chunks in Qdrant
+        
+        // Initialize embeddings
         const embeddings = new GoogleGenerativeAIEmbeddings({
-            apiKey: "AIzaSyCSSH8weHRJjhdSzuiMdFZOANTMybGPTms",
-            modelName: "models/embedding-001"
+            apiKey: process.env.GOOGLE_API_KEY,
+            modelName: "models/text-embedding-004"
         });
         
-        // Correct initialization: documents as first argument, embeddings as second
+        // Embed and store chunks in Qdrant
         const vectorStore = await QdrantVectorStore.fromDocuments(
-            allChunks,  // First argument should be the documents
-            embeddings,  // Second argument should be the embeddings
+            allChunks,
+            embeddings,
             {
                 client,
                 collectionName: "pdf-docs",
             }
         );
         
-        console.log("Chunks embedded and stored in Qdrant vector store.");
+        console.log(`Successfully embedded and stored ${allChunks.length} chunks in Qdrant.`);
         return { status: "success", chunksCount: allChunks.length };
     } catch (error) {
         console.error("Error processing PDF:", error);
         throw error;
     }
 }, {
-    concurrency: 100, 
+    concurrency: 1,
     connection: {
         host: "localhost",
         port: 6379
@@ -75,4 +68,3 @@ const worker = new Worker("pdf-queue", async (job) => {
 });
 
 console.log("PDF processing worker started and waiting for jobs...");
-

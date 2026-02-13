@@ -16,17 +16,17 @@ const worker = new Worker("pdf-queue", async (job) => {
         console.log(`Processing job:`, job.data);
         const data = JSON.parse(job.data);
         console.log(`Loading PDF from: ${data.path}`);
-        
+
         // Load the PDF document
         const loader = new PDFLoader(data.path);
         const docs = await loader.load();
-        
+
         // Create text splitter for chunking
         const textSplitter = new RecursiveCharacterTextSplitter({
             chunkSize: 1000,
             chunkOverlap: 200
         });
-        
+
         // Process each document and chunk them
         let allChunks = [];
         for (let i = 0; i < docs.length; i++) {
@@ -34,15 +34,15 @@ const worker = new Worker("pdf-queue", async (job) => {
             const chunks = await textSplitter.splitDocuments([docs[i]]);
             allChunks = allChunks.concat(chunks);
         }
-        
+
         console.log(`Total chunks created: ${allChunks.length}`);
-        
+
         // Initialize embeddings
         const embeddings = new GoogleGenerativeAIEmbeddings({
             apiKey: process.env.GOOGLE_API_KEY,
-            modelName: "models/text-embedding-004"
+            modelName: "text-embedding-004"
         });
-        
+
         // Embed and store chunks in Qdrant
         const vectorStore = await QdrantVectorStore.fromDocuments(
             allChunks,
@@ -52,7 +52,7 @@ const worker = new Worker("pdf-queue", async (job) => {
                 collectionName: "pdf-docs",
             }
         );
-        
+
         console.log(`Successfully embedded and stored ${allChunks.length} chunks in Qdrant.`);
         return { status: "success", chunksCount: allChunks.length };
     } catch (error) {

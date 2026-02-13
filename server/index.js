@@ -48,7 +48,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
             destination: req.file.destination,
             path: req.file.path
         }));
-        
+
         res.json({ message: "File uploaded successfully" });
     } catch (error) {
         console.error("Error uploading file:", error);
@@ -63,7 +63,7 @@ app.get("/chat", async (req, res) => {
 
         const embeddings = new GoogleGenerativeAIEmbeddings({
             apiKey: process.env.GOOGLE_API_KEY,
-            modelName: "models/text-embedding-004"
+            modelName: "text-embedding-004"
         });
 
         const vectorStore = await QdrantVectorStore.fromExistingCollection(
@@ -76,11 +76,11 @@ app.get("/chat", async (req, res) => {
 
         const retriever = vectorStore.asRetriever({ k: 2 });
         const relevantDocs = await retriever.invoke(userQuery);
-        
-        const context = relevantDocs.map((doc, i) => 
+
+        const context = relevantDocs.map((doc, i) =>
             `Document ${i + 1}:\n${doc.pageContent}`
         ).join('\n\n');
-        
+
         const prompt = `You are a helpful assistant answering questions based on provided documents.
 
 Context documents from the knowledge base:
@@ -89,7 +89,7 @@ ${context}
 User question: ${userQuery}
 
 Answer the question based ONLY on the information provided in the context documents. If the context doesn't contain relevant information to answer the question, acknowledge that and don't make up information. Provide a clear, concise answer with specific details from the documents.`;
-        
+
         const model = genAi.getGenerativeModel({ model: "gemini-2.5-flash" });
         const chatResult = await model.generateContent(prompt);
         const answer = chatResult.response.text();

@@ -40,7 +40,7 @@ const worker = new Worker("pdf-queue", async (job) => {
         // Initialize embeddings
         const embeddings = new GoogleGenerativeAIEmbeddings({
             apiKey: process.env.GOOGLE_API_KEY,
-            modelName: "text-embedding-004"
+            modelName: "models/embedding-001"
         });
 
         // Embed and store chunks in Qdrant

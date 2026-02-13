@@ -63,7 +63,7 @@ app.get("/chat", async (req, res) => {
 
         const embeddings = new GoogleGenerativeAIEmbeddings({
             apiKey: process.env.GOOGLE_API_KEY,
-            modelName: "text-embedding-004"
+            modelName: "models/embedding-001"
         });
 
         const vectorStore = await QdrantVectorStore.fromExistingCollection(

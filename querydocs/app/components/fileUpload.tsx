@@ -17,15 +17,15 @@ const FileUpload: React.FC = () => {
                 setIsUploading(true);
                 setUploadSuccess(false);
                 setFileName(file.name);
-                
+
                 try {
                     const formData = new FormData();
                     formData.append('pdf', file);
-                    await fetch('http://localhost:4001/upload', {
+                    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/upload`, {
                         method: 'POST',
                         body: formData
                     });
-                    
+
                     setUploadSuccess(true);
                     setTimeout(() => setUploadSuccess(false), 3000);
                 } catch (error) {
@@ -41,8 +41,8 @@ const FileUpload: React.FC = () => {
     return (
         <div className="flex flex-col gap-3">
             {/* Main upload button */}
-            <button 
-                onClick={handleFileUpload} 
+            <button
+                onClick={handleFileUpload}
                 disabled={isUploading}
                 className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-lg shadow-md flex items-center justify-center gap-3 hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-wait w-full"
             >
@@ -58,7 +58,7 @@ const FileUpload: React.FC = () => {
                     </>
                 )}
             </button>
-            
+
             {/* Success message */}
             {uploadSuccess && (
                 <div className="flex items-center gap-2 text-green-400 bg-green-500/10 p-2 rounded-md border border-green-500/20">
@@ -66,7 +66,7 @@ const FileUpload: React.FC = () => {
                     <span className="text-sm">Successfully uploaded <span className="font-medium">{fileName}</span></span>
                 </div>
             )}
-            
+
             {/* Quick note/help text */}
             <div className="mt-2 p-3 bg-slate-800/40 rounded-lg border border-slate-700">
                 <div className="flex items-center gap-2 mb-2">
